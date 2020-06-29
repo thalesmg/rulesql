@@ -123,8 +123,8 @@ select_field -> scalar_opt_as_exp    : ['$1'].
 select_field -> '*'                  : [<<"*">>].
 
 case_when_opt_as_exp -> case_when_exp         : '$1'.
-case_when_opt_as_exp -> case_when_exp    NAME : {as, '$1', unwrap_bin('$2')}.
-case_when_opt_as_exp -> case_when_exp AS NAME : {as, '$1', unwrap_bin('$3')}.
+case_when_opt_as_exp -> case_when_exp    NAME : {as, '$1', unwrap_var('$2')}.
+case_when_opt_as_exp -> case_when_exp AS NAME : {as, '$1', unwrap_var('$3')}.
 
 case_when_exp -> CASE                   case_when_then_list      END : {'case', <<>>, '$2', {}}.
 case_when_exp -> CASE                   case_when_then_list else END : {'case', <<>>, '$2', '$3'}.
@@ -190,8 +190,8 @@ scalar_opt_as_exp -> scalar_opt_as_exp_2 : '$1'.
 scalar_opt_as_exp_1 -> scalar_exp                       : '$1'.
 scalar_opt_as_exp_1 -> scalar_exp COMPARISON scalar_exp : {unwrap('$2'), '$1', '$3'}.
 
-scalar_opt_as_exp_2 -> scalar_exp    NAME : {as, '$1', unwrap_bin('$2')}.
-scalar_opt_as_exp_2 -> scalar_exp AS NAME : {as, '$1', unwrap_bin('$3')}.
+scalar_opt_as_exp_2 -> scalar_exp    NAME : {as, '$1', unwrap_var('$2')}.
+scalar_opt_as_exp_2 -> scalar_exp AS NAME : {as, '$1', unwrap_var('$3')}.
 
 scalar_exp -> scalar_exp '+'    scalar_exp : {'+','$1','$3'}.
 scalar_exp -> scalar_exp '-'    scalar_exp : {'-','$1','$3'}.
@@ -210,7 +210,7 @@ unary_add_or_subtract -> '-' : '-'.
 scalar_exp_commalist ->                          scalar_opt_as_exp :         ['$1'].
 scalar_exp_commalist -> scalar_exp_commalist ',' scalar_opt_as_exp : '$1' ++ ['$3'].
 
-computed_var -> NAME            :   unwrap_bin('$1').
+computed_var -> NAME            :   unwrap_var('$1').
 computed_var -> column_ref      :   '$1'.
 computed_var -> index_ref       :   '$1'.
 computed_var -> range_ref       :   '$1'.
@@ -268,6 +268,9 @@ unwrap_bin({X, _}) when is_atom(X) -> atom_to_binary(X, unicode);
 unwrap_bin({_, _, X}) when is_list(X) -> list_to_binary([unquote(X)]);
 unwrap_bin({_, _, X}) when is_atom(X) -> atom_to_binary(X, unicode).
 
+unwrap_var(Token) ->
+    var(unwrap_bin(Token)).
+
 unwrap_range({'RANGE', _, {IndexBegin, IndexEnd}}) ->
     {IndexBegin, IndexEnd}.
 
@@ -277,6 +280,8 @@ unwrap_const({'INTNUM', _, X}) when is_list(X) ->
     const(list_to_integer(X));
 unwrap_const({'APPROXNUM', _, X}) when is_list(X) ->
     const(list_to_float(X)).
+
+var(V) -> {var, V}.
 
 const(V) -> {const, V}.
 
