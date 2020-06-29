@@ -39,6 +39,6 @@
     {"^(?i)(WHERE)$",           'WHERE'}
 ]).
 
--define(RESERVED_KEYS, ([atom_to_binary(Key, utf8) || {_, Key} <- ?KEYWORDS])).
+-define(RESERVED_KEYS, ([atom_to_binary(__Key__, utf8) || {_, __Key__} <- ?KEYWORDS])).
 
 -endif.

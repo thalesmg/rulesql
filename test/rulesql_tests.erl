@@ -224,13 +224,122 @@ where_test_() ->
     ].
 
 case_when_test_() ->
-    [].
+    [
+        %% case when
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{'case',<<>>,
+                            [{{'>',{var,<<"a">>},{var,<<"b">>}},
+                                {var,<<"a">>}},
+                            {{'<=',{var,<<"a">>},{var,<<"b">>}},
+                                {var,<<"b">>}}],
+                            {}}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT "
+                                "  case "
+                                "     when a > b then a "
+                                "     when a <= b then b "
+                                "  end "
+                                "FROM abc">>)),
+        %% case when else
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{'case',<<>>,
+                            [{{'=',{var,<<"a">>},{const,1}},
+                                {var,<<"a">>}},
+                            {{'=',{var,<<"a">>},{const,2}},
+                                {var,<<"a">>}}],
+                            {'-',{var,<<"a">>},{const,1}}}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT "
+                                "  case "
+                                "     when a = 1 then a "
+                                "     when a = 2 then a "
+                                "     else a-1 "
+                                "  end "
+                                "FROM abc">>))
+    ].
 
 foreach_test_() ->
-    [].
+    [
+        %% foreach on a single object
+        ?_assertMatch(
+            {ok,{foreach,
+                    [{fields,[{var,<<"a">>}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"FOREACH a FROM abc">>)),
+
+        %% foreach contains multiple lines
+        ?_assertMatch(
+            {ok,{foreach,
+                    [{fields,
+                        [{as,{'fun',
+                                {var,<<"range">>},
+                                [{const,1},{const,2}]},
+                            {var,<<"list">>}},
+                        {var,<<"list">>}]},
+                    {from,[<<"abc">>]},
+                    {where,{'=',{const,1},{const,1}}}]}},
+            rulesql:parsetree(<<"FOREACH range(1,2) as list, list FROM \"abc\" WHERE 1 = 1">>))
+    ].
 
 foreach_do_test_() ->
-    [].
+    [
+        %% foreach do
+        ?_assertMatch(
+            {ok,{foreach,
+                    [{fields,[{var,<<"a">>}]},
+                     {do,[{var,<<"clientid">>}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"FOREACH a DO clientid FROM abc">>)),
+
+        %% foreach do contains as
+        ?_assertMatch(
+            {ok,{foreach,
+                    [{fields,[{var,<<"a">>}]},
+                     {do,[{as,{map_path,{var,<<"a">>},{var,<<"item">>}},
+                              {var,<<"a">>}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"FOREACH a DO item.a as a FROM abc">>))
+    ].
 
 foreach_do_incase_test_() ->
-    [].
+    [
+        %% foreach incase
+        ?_assertMatch(
+            {ok,{foreach,[
+                    {fields,[{var,<<"a">>}]},
+                    {incase,{'<>',{var,<<"a">>},{const,1}}},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"FOREACH a incase a <> 1 FROM abc">>)),
+
+        %% foreach incase multiple conditions
+        ?_assertMatch(
+            {ok,{foreach,
+                    [{fields,[{var,<<"a">>}]},
+                     {incase,
+                         {'or',
+                             {'>',{var,<<"a">>},{const,1.2}},
+                             {'<',{var,<<"a">>},{const,0}}}},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"FOREACH a incase a > 1.2 or a < 0 FROM abc">>)),
+
+        %% foreach do incase
+        ?_assertMatch(
+            {ok,{foreach,[{fields,[{var,<<"a">>}]},
+                          {do,[{var,<<"a">>}]},
+                          {incase,{'<>',{var,<<"a">>},{const,1}}},
+                          {from,[<<"abc">>]},
+                          {where,{}}]}},
+            rulesql:parsetree(<<"FOREACH a DO a INCASE a <> 1 FROM abc">>))
+
+    ].

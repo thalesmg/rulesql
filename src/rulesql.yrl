@@ -216,7 +216,7 @@ computed_var -> index_ref       :   '$1'.
 computed_var -> range_ref       :   '$1'.
 computed_var -> make_range      :   '$1'.
 
-column_ref -> NAME '.' computed_var             : {'map_path', '$3', '$1'}.
+column_ref -> computed_var '.' computed_var     : {'map_path', '$3', '$1'}.
 index_ref -> computed_var '[' computed_var ']'  : {'get_index', '$3', '$1'}.
 range_ref -> computed_var  RANGE                : {'get_range', unwrap_range('$2'), '$1'}.
 make_range -> RANGE                             : {'range', unwrap_range('$1')}.
