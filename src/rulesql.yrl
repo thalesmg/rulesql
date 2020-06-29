@@ -120,7 +120,7 @@ select_field_commalist -> select_field_commalist ',' select_field : '$1' ++ '$3'
 
 select_field -> case_when_opt_as_exp : ['$1'].
 select_field -> scalar_opt_as_exp    : ['$1'].
-select_field -> '*'                  : [<<"*">>].
+select_field -> '*'                  : ['*'].
 
 case_when_opt_as_exp -> case_when_exp         : '$1'.
 case_when_opt_as_exp -> case_when_exp    NAME : {as, '$1', unwrap_var('$2')}.
@@ -269,7 +269,10 @@ unwrap_bin({_, _, X}) when is_list(X) -> list_to_binary([unquote(X)]);
 unwrap_bin({_, _, X}) when is_atom(X) -> atom_to_binary(X, unicode).
 
 unwrap_var(Token) ->
-    var(unwrap_bin(Token)).
+    case unwrap_bin(Token) of
+        <<"*">> -> '*';
+        Bin -> var(Bin)
+    end.
 
 unwrap_range({'RANGE', _, {IndexBegin, IndexEnd}}) ->
     {IndexBegin, IndexEnd}.

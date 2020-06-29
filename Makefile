@@ -18,6 +18,8 @@ eunit: compile
 
 test: ct proper eunit
 
+tests: test
+
 xref:
 	$(REBAR) xref
 

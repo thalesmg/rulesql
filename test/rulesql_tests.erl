@@ -118,10 +118,22 @@ as_test_() ->
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a as b FROM \"abc\"">>)),
 
+        %% basic as another way
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[{as, {var, <<"a">>}, {var, <<"b">>}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT a b FROM \"abc\"">>)),
+
         %% as clause can be used along with the ordinary varibales
         ?_assertMatch(
             {ok,{select,
-                    [{fields,[{as, {var, <<"a">>}, {var, <<"b">>}}, {var, <<"x">>, '*'}]},
+                    [{fields,[
+                        {as, {var, <<"a">>}, {var, <<"b">>}},
+                        {var, <<"x">>},
+                        '*'
+                     ]},
                      {from,[<<"abc">>]},
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a as b, x, * FROM \"abc\"">>))
@@ -173,7 +185,7 @@ where_test_() ->
                      {from,[<<"abc">>]},
                      {where,
                         {'and', {'=', {const, 1}, {const, 1}},
-                                {'<', {var, a}, {const, 2}}}}
+                                {'<', {var, <<"a">>}, {const, 2}}}}
                     ]}},
             rulesql:parsetree(<<"SELECT * FROM \"abc\" "
                                 "WHERE 1 = 1 and a < 2"
@@ -187,7 +199,7 @@ where_test_() ->
                      {where,
                         {'or',
                             {'and', {'=', {const, 1}, {const, 1}},
-                                    {'<', {var, a}, {const, 2}}},
+                                    {'<', {var, <<"a">>}, {const, 2}}},
                             {'!=', {const, 3}, {const, 3}}}}
                     ]}},
             rulesql:parsetree(<<"SELECT * FROM \"abc\" "
@@ -202,7 +214,7 @@ where_test_() ->
                      {where,
                         {'and',
                             {'=', {const, 1}, {const, 1}},
-                            {'or', {'<', {var, a}, {const, 2}},
+                            {'or', {'<', {var, <<"a">>}, {const, 2}},
                                    {'!=', {const, 3}, {const, 3} }}
                         }}
                     ]}},
