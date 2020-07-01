@@ -184,7 +184,8 @@ not_in -> NOT IN : 'not in'.
 %% scalar expressions
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-scalar_opt_as_exp -> scalar_opt_as_exp_1 : '$1'.
+scalar_opt_as_exp -> scalar_opt_as_exp_1             : '$1'.
+scalar_opt_as_exp -> scalar_opt_as_exp_1 AS path_ref : {as, '$1', '$3'}.
 scalar_opt_as_exp -> scalar_opt_as_exp_2 : '$1'.
 
 scalar_opt_as_exp_1 -> scalar_exp                       : '$1'.
@@ -225,8 +226,8 @@ index_ref -> '[' INTNUM ']'             : {'index', unwrap_const('$2')}.
 range_ref ->  path_ref  RANGE           : {'get_range', unwrap_range('$2'), '$1'}.
 range_literal -> RANGE                  : {'range', unwrap_range('$1')}.
 
-function_ref -> computed_var        '('                ')' : {'fun', '$1', []}.
-function_ref -> computed_var        '(' fun_args       ')' : {'fun', '$1', make_list('$3')}.
+function_ref -> path_ref        '('                ')' : {'fun', '$1', []}.
+function_ref -> path_ref        '(' fun_args       ')' : {'fun', '$1', make_list('$3')}.
 
 fun_args -> fun_arg              : ['$1'].
 fun_args -> fun_arg ',' fun_args : ['$1' | '$3'].

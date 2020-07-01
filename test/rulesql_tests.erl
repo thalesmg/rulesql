@@ -58,7 +58,29 @@ select_test_() ->
                     [{fields,[{var, <<"x">>}, '*', {var, <<"y">>}]},
                      {from,[<<"abc">>]},
                      {where,{}}]}},
-            rulesql:parsetree(<<"SELECT x,*,y FROM abc">>))
+            rulesql:parsetree(<<"SELECT x,*,y FROM abc">>)),
+
+        %% operator precedences
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[
+                        {as,{'+', {var, <<"z">>},
+                                  {'*', {var, <<"x">>}, {var, <<"y">>}}},
+                            {var, <<"z">>}}
+                      ]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT z + x * y as z FROM abc">>)),
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[
+                        {as,{'*', {'+', {var, <<"z">>}, {var, <<"x">>}},
+                                  {var, <<"y">>}},
+                            {var, <<"z">>}}
+                      ]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT (z + x) * y as z FROM abc">>))
     ].
 
 vars_and_consts_test_() ->
@@ -258,15 +280,25 @@ range_test_() ->
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a[1..-1] as b FROM abc">>)),
 
-        %% range MUST have 'as' clause
+        %% range may or may not have 'as' clause
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,[{fields,[{range,{1,3}}]},
+                         {from,[<<"abc">>]},
+                         {where,{}}]}},
             rulesql:parsetree(<<"SELECT [1..3] FROM abc">>)),
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,[{fields,[{get_range,{1,3},{var,<<"a">>}}]},
+                                  {from,[<<"abc">>]},
+                                  {where,{}}]}},
             rulesql:parsetree(<<"SELECT a[1..3] FROM abc">>)),
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,
+                    [{fields,
+                        [{get_range,
+                            {1,3},
+                            {path,[{key,<<"a">>},{key,<<"e">>}]}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT a.e[1..3] FROM abc">>)),
 
         %% range can be applied on a path
@@ -339,76 +371,157 @@ as_test_() ->
             rulesql:parsetree(<<"SELECT a as b, x, * FROM \"abc\"">>))
     ].
 
-non_as_test() ->
+non_as_test_() ->
     [
-        %% expressions without 'as' is not allowed
+        %% expressions without 'as' is also allowed
 
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,[{fields,[{'-',{const,1}}]},
+                         {from,[<<"abc">>]},
+                         {where,{}}]}},
             rulesql:parsetree(<<"SELECT -1 FROM \"abc\"">>)),
         ?_assertMatch(
-            {ok, _},
+            {ok,{select,[{fields,[{as,{'-',{const,1}},{var,<<"a">>}}]},
+                         {from,[<<"abc">>]},
+                         {where,{}}]}},
             rulesql:parsetree(<<"SELECT -1 as a FROM \"abc\"">>)),
 
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,[{fields,[{'+',{const,1},{const,1}}]},
+                         {from,[<<"abc">>]},
+                         {where,{}}]}},
             rulesql:parsetree(<<"SELECT 1 + 1 FROM \"abc\"">>)),
         ?_assertMatch(
-            {ok, _},
+            {ok,{select,
+                    [{fields,
+                        [{as,{'+',{const,1},{const,1}},{var,<<"a">>}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT 1 + 1 as a FROM \"abc\"">>)),
 
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,[{fields,[{'/',{var,<<"x">>},{var,<<"y">>}}]},
+                         {from,[<<"abc">>]},
+                         {where,{}}]}},
             rulesql:parsetree(<<"SELECT x / y FROM \"abc\"">>)),
         ?_assertMatch(
-            {ok, _},
+            {ok,{select,
+                    [{fields,
+                        [{as,{'/',{var,<<"x">>},{var,<<"y">>}},
+                            {var,<<"e">>}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT x / y as e FROM \"abc\"">>)),
 
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,
+                    [{fields,
+                        [{'fun',
+                            {var,<<"nth">>},
+                            [{const,1},{var,<<"a">>}]}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
             rulesql:parsetree(<<"SELECT nth(1,a) FROM \"abc\"">>)),
         ?_assertMatch(
-            {ok, _},
+            {ok,{select,
+                    [{fields,
+                        [{as,{'fun',
+                                {var,<<"nth">>},
+                                [{const,1},{var,<<"a">>}]},
+                            {var,<<"a">>}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT nth(1,a) as a FROM \"abc\"">>)),
 
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,[{fields,[{'=',{var,<<"a">>},{const,<<"1">>}}]},
+                         {from,[<<"abc">>]},
+                         {where,{}}]}},
             rulesql:parsetree(<<"SELECT a = '1' FROM \"abc\"">>)),
         ?_assertMatch(
-            {ok, _},
+            {ok,{select,
+                    [{fields,
+                        [{as,{'=',{var,<<"a">>},{const,<<"1">>}},
+                             {var,<<"a">>}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT a = '1' as a FROM \"abc\"">>)),
 
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,
+                    [{fields,
+                        [{'case',<<>>,
+                            [{{'>',{var,<<"a">>},{var,<<"b">>}},
+                                {const,1}}],
+                            {}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT case "
                                     "when a > b then 1 "
                                 "end FROM \"abc\"">>)),
         ?_assertMatch(
-            {ok, _},
+            {ok,{select,
+                    [{fields,
+                        [{as,{'case',<<>>,
+                                [{{'>',{var,<<"a">>},{var,<<"b">>}},
+                                    {const,1}}],
+                                {}},
+                            {var,<<"d">>}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT case "
                                     "when a > b then 1 "
                                 "end as d FROM \"abc\"">>)),
 
         ?_assertMatch(
-            {parse_error, _},
+            {ok,{select,
+                    [{fields,
+                        [{'case',<<>>,
+                            [{{'>',{var,<<"a">>},{var,<<"b">>}},
+                                {var,<<"a">>}},
+                            {{'<',{var,<<"a">>},{var,<<"b">>}},
+                                {const,1}}],
+                            {}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT case "
                                     "when a > b then a "
                                     "when a < b then 1 "
                                 "end FROM \"abc\"">>)),
 
         ?_assertMatch(
-            {ok, _},
+            {ok,{select,
+                    [{fields,
+                        [{'case',<<>>,
+                            [{{'>',{var,<<"a">>},{var,<<"b">>}},
+                                {var,<<"a">>}},
+                            {{'<',{var,<<"a">>},{var,<<"b">>}},
+                                {const,1}}],
+                            {const,2}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT case "
                                     "when a > b then a "
                                     "when a < b then 1 "
-                                "end as d FROM \"abc\"">>)),
+                                    "else 2 "
+                                "end FROM \"abc\"">>)),
 
         ?_assertMatch(
-            {ok, _},
+            {ok,{select,
+                    [{fields,
+                        [{as,{'case',<<>>,
+                                [{{'>',{var,<<"a">>},{var,<<"b">>}},
+                                    {var,<<"a">>}},
+                                {{'<',{var,<<"a">>},{var,<<"b">>}},
+                                    {const,1}}],
+                                {}},
+                            {var,<<"d">>}}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
             rulesql:parsetree(<<"SELECT case "
                                     "when a > b then a "
-                                    "when a < b then b "
-                                "end FROM \"abc\"">>))
+                                    "when a < b then 1 "
+                                "end as d FROM \"abc\"">>))
     ].
 
 from_test_() ->
