@@ -141,7 +141,7 @@ maps_get_test_() ->
                     [{fields, [{path, [{key,<<"a">>}, {index,{const,1}}, {index,{const,2}}, {key, <<"b">>}, {index,{var,<<"c">>}}]}]},
                      {from,[<<"abc">>]},
                      {where,{}}]}},
-            rulesql:parsetree(<<"SELECT a[1][2].b.[c] FROM abc">>))
+            rulesql:parsetree(<<"SELECT a[1][2].b[c] FROM abc">>))
     ].
 
 maps_put_test_() ->
@@ -151,7 +151,7 @@ maps_put_test_() ->
             {ok,{select,
                     [{fields,[
                         {'as',{var, <<"e">>},
-                              {path, [{var,<<"c">>}, {const,<<"d">>}]}
+                              {path, [{key,<<"c">>}, {key,<<"d">>}]}
                         }
                      ]},
                      {from,[<<"abc">>]},
@@ -162,8 +162,8 @@ maps_put_test_() ->
         ?_assertMatch(
             {ok,{select,
                     [{fields,[
-                        {'as',{path, [{var,<<"e">>}, {const,<<"f">>}]},
-                              {path, [{var,<<"c">>}, {const,<<"d">>}]}
+                        {'as',{path, [{key,<<"e">>}, {key,<<"f">>}]},
+                              {path, [{key,<<"c">>}, {key,<<"d">>}]}
                         }
                      ]},
                      {from,[<<"abc">>]},
@@ -174,8 +174,8 @@ maps_put_test_() ->
         ?_assertMatch(
             {ok,{select,
                     [{fields,[
-                        {'as',{path, [{var,<<"e">>}, {const,<<"f">>}]},
-                              {path, [{var,<<"c">>}, {const,<<"d">>}, {index,{const,1}}]}
+                        {'as',{path, [{key,<<"e">>}, {key,<<"f">>}]},
+                              {path, [{key,<<"c">>}, {key,<<"d">>}, {index,{const,1}}]}
                         }
                      ]},
                      {from,[<<"abc">>]},
@@ -188,7 +188,7 @@ array_index_get_() ->
         %% one-depth array index get
         ?_assertMatch(
             {ok,{select,
-                    [{fields,{path, [{var,<<"a">>}, {index,{const,1}}]}},
+                    [{fields,{path, [{key,<<"a">>}, {index,{const,1}}]}},
                      {from,[<<"abc">>]},
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a[1] FROM abc">>)),
@@ -196,7 +196,7 @@ array_index_get_() ->
         %% variable index
         ?_assertMatch(
             {ok,{select,
-                    [{fields,{path, [{var,<<"a">>}, {index,{var,<<"e">>}}]}},
+                    [{fields,{path, [{key,<<"a">>}, {index,{var,<<"e">>}}]}},
                      {from,[<<"abc">>]},
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a[e] FROM abc">>)),
@@ -204,7 +204,7 @@ array_index_get_() ->
         %% path index
         ?_assertMatch(
             {ok,{select,
-                    [{fields,{path, [{var,<<"a">>}, {path, [{var, <<"e">>}, {var, <<"f">>}]}]}},
+                    [{fields,{path, [{key,<<"a">>}, {path, [{key, <<"e">>}, {key, <<"f">>}]}]}},
                      {from,[<<"abc">>]},
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a[e.f] FROM abc">>)),
@@ -274,7 +274,7 @@ range_test_() ->
             {ok,{select,
                     [{fields,[
                         {as, {const, <<"hah">>}, {var, <<"c">>}},
-                        {as, {get_range, {1, 3}, {path, [{var, <<"a">>}, {const, <<"b">>}]}},
+                        {as, {get_range, {1, 3}, {path, [{key, <<"a">>}, {key, <<"b">>}]}},
                              {var, <<"d">>}}
                      ]},
                      {from,[<<"abc">>]},
@@ -284,12 +284,12 @@ range_test_() ->
         ?_assertMatch(
             {ok,{select,
                     [{fields,[
-                        {as, {get_range, {1, 3}, {path, [{var, <<"a">>}, {index, {var, <<"b">>}}]}},
+                        {as, {get_range, {1, 3}, {path, [{key, <<"a">>}, {index, {var, <<"b">>}}]}},
                              {var, <<"r">>}}
                      ]},
                      {from,[<<"abc">>]},
                      {where,{}}]}},
-            rulesql:parsetree(<<"SELECT a.[b][1..3] as r FROM abc">>)),
+            rulesql:parsetree(<<"SELECT a[b][1..3] as r FROM abc">>)),
 
         %% but can not be used as part of the path..
         ?_assertMatch(
@@ -575,7 +575,7 @@ foreach_do_test_() ->
         ?_assertMatch(
             {ok,{foreach,
                     [{fields,[{var,<<"a">>}]},
-                     {do,[{as,{map_path,{var,<<"a">>},{var,<<"item">>}},
+                     {do,[{as,{path,[{key,<<"item">>},{key,<<"a">>}]},
                               {var,<<"a">>}}]},
                      {from,[<<"abc">>]},
                      {where,{}}]}},

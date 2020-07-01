@@ -219,7 +219,6 @@ path_ref -> path_ref index_ref          : merge_path('$1', '$2').
 path_ref -> path_ref index_ref path_ref : merge_path('$1', '$3').
 path_ref -> NAME                        : unwrap_var('$1').
 
-index_ref -> index_ref index_ref        : {'index', merge_path('$1', '$2')}.
 index_ref -> '[' path_ref ']'           : {'index', '$2'}.
 index_ref -> '[' INTNUM ']'             : {'index', unwrap_const('$2')}.
 
