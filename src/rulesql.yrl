@@ -42,7 +42,7 @@ Nonterminals
   literal
   index_ref
   range_ref
-  make_range.
+  range_literal.
 
 Terminals
   STRING
@@ -123,8 +123,8 @@ select_field -> scalar_opt_as_exp    : ['$1'].
 select_field -> '*'                  : ['*'].
 
 case_when_opt_as_exp -> case_when_exp                 : '$1'.
-case_when_opt_as_exp -> case_when_exp    computed_var : {as, '$1', '$2'}.
-case_when_opt_as_exp -> case_when_exp AS computed_var : {as, '$1', '$3'}.
+case_when_opt_as_exp -> case_when_exp    path_ref     : {as, '$1', '$2'}.
+case_when_opt_as_exp -> case_when_exp AS path_ref     : {as, '$1', '$3'}.
 
 case_when_exp -> CASE                   case_when_then_list      END : {'case', <<>>, '$2', {}}.
 case_when_exp -> CASE                   case_when_then_list else END : {'case', <<>>, '$2', '$3'}.
@@ -190,8 +190,8 @@ scalar_opt_as_exp -> scalar_opt_as_exp_2 : '$1'.
 scalar_opt_as_exp_1 -> scalar_exp                       : '$1'.
 scalar_opt_as_exp_1 -> scalar_exp COMPARISON scalar_exp : {unwrap('$2'), '$1', '$3'}.
 
-scalar_opt_as_exp_2 -> scalar_exp    computed_var : {as, '$1', '$2'}.
-scalar_opt_as_exp_2 -> scalar_exp AS computed_var : {as, '$1', '$3'}.
+scalar_opt_as_exp_2 -> scalar_exp    path_ref : {as, '$1', '$2'}.
+scalar_opt_as_exp_2 -> scalar_exp AS path_ref : {as, '$1', '$3'}.
 
 scalar_exp -> scalar_exp '+'    scalar_exp : {'+','$1','$3'}.
 scalar_exp -> scalar_exp '-'    scalar_exp : {'-','$1','$3'}.
@@ -212,7 +212,7 @@ scalar_exp_commalist -> scalar_exp_commalist ',' scalar_opt_as_exp : '$1' ++ ['$
 
 computed_var -> path_ref        :   '$1'.
 computed_var -> range_ref       :   '$1'.
-computed_var -> make_range      :   '$1'.
+computed_var -> range_literal   :   '$1'.
 
 path_ref -> path_ref '.' path_ref       : merge_path('$1', '$3').
 path_ref -> path_ref index_ref          : merge_path('$1', '$2').
@@ -223,7 +223,7 @@ index_ref -> '[' path_ref ']'           : {'index', '$2'}.
 index_ref -> '[' INTNUM ']'             : {'index', unwrap_const('$2')}.
 
 range_ref ->  path_ref  RANGE           : {'get_range', unwrap_range('$2'), '$1'}.
-make_range -> RANGE                     : {'range', unwrap_range('$1')}.
+range_literal -> RANGE                  : {'range', unwrap_range('$1')}.
 
 function_ref -> computed_var        '('                ')' : {'fun', '$1', []}.
 function_ref -> computed_var        '(' fun_args       ')' : {'fun', '$1', make_list('$3')}.
