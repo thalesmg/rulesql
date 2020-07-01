@@ -35,7 +35,7 @@ Nonterminals
   unary_add_or_subtract
   scalar_exp_commalist
   computed_var
-  column_ref
+  path_ref
   function_ref
   fun_args
   fun_arg
@@ -122,9 +122,9 @@ select_field -> case_when_opt_as_exp : ['$1'].
 select_field -> scalar_opt_as_exp    : ['$1'].
 select_field -> '*'                  : ['*'].
 
-case_when_opt_as_exp -> case_when_exp         : '$1'.
-case_when_opt_as_exp -> case_when_exp    NAME : {as, '$1', unwrap_var('$2')}.
-case_when_opt_as_exp -> case_when_exp AS NAME : {as, '$1', unwrap_var('$3')}.
+case_when_opt_as_exp -> case_when_exp                 : '$1'.
+case_when_opt_as_exp -> case_when_exp    computed_var : {as, '$1', '$2'}.
+case_when_opt_as_exp -> case_when_exp AS computed_var : {as, '$1', '$3'}.
 
 case_when_exp -> CASE                   case_when_then_list      END : {'case', <<>>, '$2', {}}.
 case_when_exp -> CASE                   case_when_then_list else END : {'case', <<>>, '$2', '$3'}.
@@ -190,8 +190,8 @@ scalar_opt_as_exp -> scalar_opt_as_exp_2 : '$1'.
 scalar_opt_as_exp_1 -> scalar_exp                       : '$1'.
 scalar_opt_as_exp_1 -> scalar_exp COMPARISON scalar_exp : {unwrap('$2'), '$1', '$3'}.
 
-scalar_opt_as_exp_2 -> scalar_exp    NAME : {as, '$1', unwrap_var('$2')}.
-scalar_opt_as_exp_2 -> scalar_exp AS NAME : {as, '$1', unwrap_var('$3')}.
+scalar_opt_as_exp_2 -> scalar_exp    computed_var : {as, '$1', '$2'}.
+scalar_opt_as_exp_2 -> scalar_exp AS computed_var : {as, '$1', '$3'}.
 
 scalar_exp -> scalar_exp '+'    scalar_exp : {'+','$1','$3'}.
 scalar_exp -> scalar_exp '-'    scalar_exp : {'-','$1','$3'}.
@@ -210,16 +210,21 @@ unary_add_or_subtract -> '-' : '-'.
 scalar_exp_commalist ->                          scalar_opt_as_exp :         ['$1'].
 scalar_exp_commalist -> scalar_exp_commalist ',' scalar_opt_as_exp : '$1' ++ ['$3'].
 
-computed_var -> NAME            :   unwrap_var('$1').
-computed_var -> column_ref      :   '$1'.
-computed_var -> index_ref       :   '$1'.
+computed_var -> path_ref        :   '$1'.
 computed_var -> range_ref       :   '$1'.
 computed_var -> make_range      :   '$1'.
 
-column_ref -> computed_var '.' computed_var     : {'map_path', '$3', '$1'}.
-index_ref -> computed_var '[' computed_var ']'  : {'get_index', '$3', '$1'}.
-range_ref -> computed_var  RANGE                : {'get_range', unwrap_range('$2'), '$1'}.
-make_range -> RANGE                             : {'range', unwrap_range('$1')}.
+path_ref -> path_ref '.' path_ref       : merge_path('$1', '$3').
+path_ref -> path_ref index_ref          : merge_path('$1', '$2').
+path_ref -> path_ref index_ref path_ref : merge_path('$1', '$3').
+path_ref -> NAME                        : unwrap_var('$1').
+
+index_ref -> index_ref index_ref        : {'index', merge_path('$1', '$2')}.
+index_ref -> '[' path_ref ']'           : {'index', '$2'}.
+index_ref -> '[' INTNUM ']'             : {'index', unwrap_const('$2')}.
+
+range_ref ->  path_ref  RANGE           : {'get_range', unwrap_range('$2'), '$1'}.
+make_range -> RANGE                     : {'range', unwrap_range('$1')}.
 
 function_ref -> computed_var        '('                ')' : {'fun', '$1', []}.
 function_ref -> computed_var        '(' fun_args       ')' : {'fun', '$1', make_list('$3')}.
@@ -293,6 +298,21 @@ make_list(L) -> [L].
 
 unquote(Str) ->
     string:trim(string:trim(Str, both, "'"), both, "\"").
+
+merge_path({var, V1}, {var, V2}) ->
+    {path, [{key, V1}, {key, V2}]};
+merge_path({var, V}, {path, Path}) ->
+    {path, [{key, V} | Path]};
+merge_path({var, V1}, {index, _} = I) ->
+    {path, [{key, V1}, I]};
+merge_path({index, _} = I1, {index, _} = I2) ->
+    {path, [I1, I2]};
+merge_path({path, Path}, {var, V}) ->
+    {path, Path ++ [{key, V}]};
+merge_path({path, Path}, {index, _} = I) ->
+    {path, Path ++ [I]};
+merge_path({path, Path1}, {path, Path2}) ->
+    {path, Path1 ++ Path2}.
 
 %%-----------------------------------------------------------------------------
 %%                                  PARSER
