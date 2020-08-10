@@ -32,8 +32,8 @@ Rules.
 [A-Za-z][A-Za-z0-9_\$@~]*                           : match_any(TokenChars, TokenLen, TokenLine, ?KEYWORDS).
 
 % numbers
-({D}+)                                              : {token, {'INTNUM', TokenLine, TokenChars}}.
-((([\.]{D}+)|({D}+[\.]?{D}*))([eE][+-]?{D}+)?[fFdD]?) : {token, {'APPROXNUM', TokenLine, TokenChars}}.
+({SD}+)                                              : {token, {'INTNUM', TokenLine, TokenChars}}.
+((([\.]{SD}+)|({SD}+[\.]?{SD}*))([eE][+-]?{SD}+)?[fFdD]?) : {token, {'APPROXNUM', TokenLine, TokenChars}}.
 
 % skips
 ([\s\t\r\n]+)                                       : skip_token.    %% white space

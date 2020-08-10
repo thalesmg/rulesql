@@ -221,7 +221,7 @@ path_ref -> path_ref index_ref path_ref : merge_path('$1', '$3').
 path_ref -> NAME                        : unwrap_var('$1').
 
 index_ref -> '[' path_ref ']'           : {'index', '$2'}.
-index_ref -> '[' INTNUM ']'             : {'index', unwrap_const('$2')}.
+index_ref -> '[' INTNUM ']'             : {'index', unwrap_index('$2')}.
 
 range_ref ->  path_ref  RANGE           : {'get_range', unwrap_range('$2'), '$1'}.
 range_literal -> RANGE                  : {'range', unwrap_range('$1')}.
@@ -288,6 +288,13 @@ unwrap_const({'INTNUM', _, X}) when is_list(X) ->
     const(list_to_integer(X));
 unwrap_const({'APPROXNUM', _, X}) when is_list(X) ->
     const(list_to_float(X)).
+
+unwrap_index({'INTNUM', _, X}) when X =:= "0"; X =:= "+0" ->
+    const(head);
+unwrap_index({'INTNUM', _, X}) when X =:= "-0" ->
+    const(tail);
+unwrap_index({'INTNUM', _, X}) when is_list(X) ->
+    const(list_to_integer(X)).
 
 var(V) -> {var, V}.
 
