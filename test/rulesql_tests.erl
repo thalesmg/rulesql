@@ -157,6 +157,14 @@ maps_get_test_() ->
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a[1].b FROM abc">>)),
 
+        %% mixed maps get with index get
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[{path, [{key,<<"a">>},{index,{const,-1}},{key,<<"b">>}]}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT a[-1].b FROM abc">>)),
+
         %% mixed maps get with multiple depth index get
         ?_assertMatch(
             {ok,{select,
@@ -727,4 +735,102 @@ foreach_do_incase_test_() ->
                           {where,{}}]}},
             rulesql:parsetree(<<"FOREACH a DO a INCASE a <> 1 FROM abc">>))
 
+    ].
+
+array_index_head_tail_test_() ->
+    [
+        %% tail
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{as,{var,<<"e">>},
+                             {path,
+                                [{key,<<"a">>},
+                                 {index,{const,tail}}]}}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT e as a[-0] FROM abc">>)),
+        %% heads
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{as,{var,<<"e">>},
+                             {path,
+                                [{key,<<"a">>},
+                                 {index,{const,head}}]}}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT e as a[0] FROM abc">>)),
+        %% from end of the array
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{as,{var,<<"e">>},
+                             {path,
+                                [{key,<<"a">>},
+                                 {index,{const,-1}}]}}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT e as a[-1] FROM abc">>))
+    ].
+
+list_literal_test_() ->
+    [
+        %% empty list construct
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{list, []}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT [] FROM abc">>)),
+        %% simple list construct with single elements
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{list,[{const,1}]}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT [1] FROM abc">>)),
+        %% simple list construct with multiple elements
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{list,[{const,1},{const,2},{const,3}]}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT [1,2,3] FROM abc">>)),
+        %% simple list construct with multiple elements with as
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{as, {list,[{const,1},{const,2},{const,3}]},
+                              {var, <<"list">>}}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT [1,2,3] as list FROM abc">>)),
+        %% list construct with different types of elements
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{list,
+                            [{var,<<"a">>},
+                             {const,1},
+                             {const,<<"b">>},
+                             {list,[{const,3},{const,3.4},{var,<<"e">>}]}
+                            ]}
+                        ]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT [a,1,'b',[3,3.4,e]] FROM abc">>)),
+        %% use list in func
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [
+                            {'fun',{var,<<"abc">>},[{list,[{const,1}]}]}
+                        ]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT abc([1]) FROM abc">>))
     ].

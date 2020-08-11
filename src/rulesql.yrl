@@ -41,6 +41,9 @@ Nonterminals
   fun_arg
   literal
   index_ref
+  list_ref
+  list_elem
+  list_elems
   range_ref
   range_literal.
 
@@ -213,7 +216,7 @@ scalar_exp_commalist -> scalar_exp_commalist ',' scalar_opt_as_exp : '$1' ++ ['$
 
 computed_var -> path_ref        :   '$1'.
 computed_var -> range_ref       :   '$1'.
-computed_var -> range_literal   :   '$1'.
+computed_var -> list_ref        :   '$1'.
 
 path_ref -> path_ref '.' path_ref       : merge_path('$1', '$3').
 path_ref -> path_ref index_ref          : merge_path('$1', '$2').
@@ -221,7 +224,18 @@ path_ref -> path_ref index_ref path_ref : merge_path('$1', '$3').
 path_ref -> NAME                        : unwrap_var('$1').
 
 index_ref -> '[' path_ref ']'           : {'index', '$2'}.
-index_ref -> '[' INTNUM ']'             : {'index', unwrap_index('$2')}.
+index_ref -> '[' INTNUM ']'             : {'index', unwrap_index('+','$2')}.
+index_ref -> '[' unary_add_or_subtract INTNUM ']' : {'index', unwrap_index('$2','$3')}.
+
+list_elems -> list_elem                 : {cons, '$1', 'nil'}.
+list_elems -> list_elem ',' list_elems  : {cons, '$1', '$3'}.
+list_elems -> '$empty'                  : nil.
+
+list_elem -> list_ref                   : '$1'.
+list_elem -> NAME                       : unwrap_var('$1').
+list_elem -> literal                    : '$1'.
+
+list_ref -> '[' list_elems ']'           : {list, trans_list_ref('$2')}.
 
 range_ref ->  path_ref  RANGE           : {'get_range', unwrap_range('$2'), '$1'}.
 range_literal -> RANGE                  : {'range', unwrap_range('$1')}.
@@ -248,6 +262,8 @@ fun_arg -> unary_add_or_subtract fun_arg : {'$1', '$2'}.
 literal -> STRING    : unwrap_const('$1').
 literal -> INTNUM    : unwrap_const('$1').
 literal -> APPROXNUM : unwrap_const('$1').
+literal -> range_literal  :   '$1'.
+
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Erlang code.
@@ -289,12 +305,14 @@ unwrap_const({'INTNUM', _, X}) when is_list(X) ->
 unwrap_const({'APPROXNUM', _, X}) when is_list(X) ->
     const(list_to_float(X)).
 
-unwrap_index({'INTNUM', _, X}) when X =:= "0"; X =:= "+0" ->
+unwrap_index('+', {'INTNUM', _, X}) when X =:= "0" ->
     const(head);
-unwrap_index({'INTNUM', _, X}) when X =:= "-0" ->
+unwrap_index('-', {'INTNUM', _, X}) when X =:= "0" ->
     const(tail);
-unwrap_index({'INTNUM', _, X}) when is_list(X) ->
-    const(list_to_integer(X)).
+unwrap_index('+', {'INTNUM', _, X}) when is_list(X) ->
+    const(list_to_integer(X));
+unwrap_index('-', {'INTNUM', _, X}) when is_list(X) ->
+    const(-list_to_integer(X)).
 
 var(V) -> {var, V}.
 
@@ -320,6 +338,11 @@ merge_path({path, Path}, {index, _} = I) ->
     {path, Path ++ [I]};
 merge_path({path, Path1}, {path, Path2}) ->
     {path, Path1 ++ Path2}.
+
+trans_list_ref(nil) ->
+    [];
+trans_list_ref({cons, Head, Tail}) ->
+    [Head] ++ trans_list_ref(Tail).
 
 %%-----------------------------------------------------------------------------
 %%                                  PARSER
