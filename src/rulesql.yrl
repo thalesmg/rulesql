@@ -231,8 +231,7 @@ list_elems -> list_elem                 : {cons, '$1', 'nil'}.
 list_elems -> list_elem ',' list_elems  : {cons, '$1', '$3'}.
 list_elems -> '$empty'                  : nil.
 
-list_elem -> list_ref                   : '$1'.
-list_elem -> NAME                       : unwrap_var('$1').
+list_elem -> computed_var               : '$1'.
 list_elem -> literal                    : '$1'.
 
 list_ref -> '[' list_elems ']'           : {list, trans_list_ref('$2')}.
