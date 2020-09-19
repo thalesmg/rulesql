@@ -1,5 +1,5 @@
 {application, rulesql,
- [{description, "An OTP library"},
+ [{description, "Rule SQL Lib for EMQX"},
   {vsn, "git"},
   {registered, []},
   {applications,

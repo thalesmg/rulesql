@@ -35,7 +35,10 @@ Nonterminals
   unary_add_or_subtract
   scalar_exp_commalist
   computed_var
+  name_or_path_ref
   path_ref
+  path_ref_r
+  index_path_ref
   function_ref
   fun_args
   fun_arg
@@ -125,9 +128,9 @@ select_field -> case_when_opt_as_exp : ['$1'].
 select_field -> scalar_opt_as_exp    : ['$1'].
 select_field -> '*'                  : ['*'].
 
-case_when_opt_as_exp -> case_when_exp                 : '$1'.
-case_when_opt_as_exp -> case_when_exp    path_ref     : {as, '$1', '$2'}.
-case_when_opt_as_exp -> case_when_exp AS path_ref     : {as, '$1', '$3'}.
+case_when_opt_as_exp -> case_when_exp                         : '$1'.
+case_when_opt_as_exp -> case_when_exp    name_or_path_ref     : {as, '$1', '$2'}.
+case_when_opt_as_exp -> case_when_exp AS name_or_path_ref     : {as, '$1', '$3'}.
 
 case_when_exp -> CASE                   case_when_then_list      END : {'case', <<>>, '$2', {}}.
 case_when_exp -> CASE                   case_when_then_list else END : {'case', <<>>, '$2', '$3'}.
@@ -187,15 +190,15 @@ not_in -> NOT IN : 'not in'.
 %% scalar expressions
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-scalar_opt_as_exp -> scalar_opt_as_exp_1             : '$1'.
-scalar_opt_as_exp -> scalar_opt_as_exp_1 AS path_ref : {as, '$1', '$3'}.
+scalar_opt_as_exp -> scalar_opt_as_exp_1                     : '$1'.
+scalar_opt_as_exp -> scalar_opt_as_exp_1 AS name_or_path_ref : {as, '$1', '$3'}.
 scalar_opt_as_exp -> scalar_opt_as_exp_2 : '$1'.
 
 scalar_opt_as_exp_1 -> scalar_exp                       : '$1'.
 scalar_opt_as_exp_1 -> scalar_exp COMPARISON scalar_exp : {unwrap('$2'), '$1', '$3'}.
 
-scalar_opt_as_exp_2 -> scalar_exp    path_ref : {as, '$1', '$2'}.
-scalar_opt_as_exp_2 -> scalar_exp AS path_ref : {as, '$1', '$3'}.
+scalar_opt_as_exp_2 -> scalar_exp    name_or_path_ref : {as, '$1', '$2'}.
+scalar_opt_as_exp_2 -> scalar_exp AS name_or_path_ref : {as, '$1', '$3'}.
 
 scalar_exp -> scalar_exp '+'    scalar_exp : {'+','$1','$3'}.
 scalar_exp -> scalar_exp '-'    scalar_exp : {'-','$1','$3'}.
@@ -214,16 +217,27 @@ unary_add_or_subtract -> '-' : '-'.
 scalar_exp_commalist ->                          scalar_opt_as_exp :         ['$1'].
 scalar_exp_commalist -> scalar_exp_commalist ',' scalar_opt_as_exp : '$1' ++ ['$3'].
 
-computed_var -> path_ref        :   '$1'.
+computed_var -> name_or_path_ref :   '$1'.
 computed_var -> range_ref       :   '$1'.
 computed_var -> list_ref        :   '$1'.
 
-path_ref -> path_ref '.' path_ref       : merge_path('$1', '$3').
-path_ref -> path_ref index_ref          : merge_path('$1', '$2').
-path_ref -> path_ref index_ref path_ref : merge_path('$1', '$3').
-path_ref -> NAME                        : unwrap_var('$1').
+name_or_path_ref -> NAME             : unwrap_var('$1').
+name_or_path_ref -> path_ref         : '$1'.
 
-index_ref -> '[' path_ref ']'           : {'index', '$2'}.
+path_ref -> path_ref '.' path_ref_r             : merge_path('$1', '$3').
+path_ref -> NAME '.' path_ref_r                 : merge_path(unwrap_var('$1'), '$3').
+path_ref -> NAME index_path_ref                 : merge_path(unwrap_var('$1'), '$2').
+
+index_path_ref -> index_ref                 : '$1'.
+index_path_ref -> index_ref index_path_ref  : merge_path('$1', '$2').
+
+path_ref_r -> path_ref_r '.' path_ref_r     : merge_path('$1', '$3').
+path_ref_r -> path_ref_r index_path_ref     : merge_path('$1', '$2').
+path_ref_r -> NAME                          : unwrap_var('$1').
+path_ref_r -> INTNUM                        : unwrap_var('$1').
+path_ref_r -> STRING                        : unwrap_var('$1').
+
+index_ref -> '[' name_or_path_ref ']'   : {'index', '$2'}.
 index_ref -> '[' INTNUM ']'             : {'index', unwrap_index('+','$2')}.
 index_ref -> '[' unary_add_or_subtract INTNUM ']' : {'index', unwrap_index('$2','$3')}.
 
@@ -236,11 +250,11 @@ list_elem -> literal                    : '$1'.
 
 list_ref -> '[' list_elems ']'           : {list, trans_list_ref('$2')}.
 
-range_ref ->  path_ref  RANGE           : {'get_range', unwrap_range('$2'), '$1'}.
+range_ref ->  name_or_path_ref  RANGE   : {'get_range', unwrap_range('$2'), '$1'}.
 range_literal -> RANGE                  : {'range', unwrap_range('$1')}.
 
-function_ref -> path_ref        '('                ')' : {'fun', '$1', []}.
-function_ref -> path_ref        '(' fun_args       ')' : {'fun', '$1', make_list('$3')}.
+function_ref -> name_or_path_ref   '('                ')' : {'fun', '$1', []}.
+function_ref -> name_or_path_ref   '(' fun_args       ')' : {'fun', '$1', make_list('$3')}.
 
 fun_args -> fun_arg              : ['$1'].
 fun_args -> fun_arg ',' fun_args : ['$1' | '$3'].
@@ -325,12 +339,16 @@ unquote(Str) ->
 
 merge_path({var, V1}, {var, V2}) ->
     {path, [{key, V1}, {key, V2}]};
-merge_path({var, V}, {path, Path}) ->
-    {path, [{key, V} | Path]};
 merge_path({var, V1}, {index, _} = I) ->
     {path, [{key, V1}, I]};
+merge_path({index, _} = I, {var, V1}) ->
+    {path, [I, {key, V1}]};
 merge_path({index, _} = I1, {index, _} = I2) ->
     {path, [I1, I2]};
+merge_path({var, V}, {path, Path}) ->
+    {path, [{key, V} | Path]};
+merge_path({index, _} = I, {path, Path}) ->
+    {path, [I | Path]};
 merge_path({path, Path}, {var, V}) ->
     {path, Path ++ [{key, V}]};
 merge_path({path, Path}, {index, _} = I) ->

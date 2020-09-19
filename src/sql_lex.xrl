@@ -33,7 +33,7 @@ Rules.
 
 % numbers
 ({D}+)                                              : {token, {'INTNUM', TokenLine, TokenChars}}.
-((([\.]{D}+)|({D}+[\.]?{D}*))([eE][+-]?{D}+)?[fFdD]?) : {token, {'APPROXNUM', TokenLine, TokenChars}}.
+(({D}+[\.]?{D}+)([eE][+-]?{D}+)?[fFdD]?)            : {token, {'APPROXNUM', TokenLine, TokenChars}}.
 
 % skips
 ([\s\t\r\n]+)                                       : skip_token.    %% white space
