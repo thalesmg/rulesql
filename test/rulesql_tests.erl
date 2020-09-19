@@ -156,6 +156,18 @@ maps_get_test_() ->
                      {from,[<<"abc">>]},
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a[1].b FROM abc">>)),
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[{path, [{key,<<"a">>},{key,<<"b">>},{index,{const,1}}]}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT a.b[1] FROM abc">>)),
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[{path, [{key,<<"a">>},{key,<<"b">>},{key,<<"c">>},{index,{const,1}}]}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT a.b.c[1] FROM abc">>)),
 
         %% mixed maps get with index get
         ?_assertMatch(
@@ -172,6 +184,65 @@ maps_get_test_() ->
                      {from,[<<"abc">>]},
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT a[1][2].b[c] FROM abc">>))
+    ].
+
+maps_get_2_test_() ->
+    [
+        %% maps get with numeric string keys
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[{path, [{key,<<"a">>}, {key,<<"1">>}]}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT a.1 FROM abc">>)),
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[{path, [{key,<<"a">>}, {key,<<"1">>}, {key,<<"b">>}]}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT a.1.'b' FROM abc">>)),
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[{path, [{key,<<"a">>}, {key,<<"1.5">>}]}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT a.'1.5' FROM abc">>)),
+        ?_assertMatch(
+            {parse_error, _},
+            rulesql:parsetree(<<"SELECT 1.b FROM abc">>)),
+        ?_assertMatch(
+            {parse_error, _},
+            rulesql:parsetree(<<"SELECT [1].b FROM abc">>)),
+
+        %% index get cannot follow '.'
+        ?_assertMatch(
+            {parse_error, _},
+            rulesql:parsetree(<<"SELECT a[1].[2] FROM abc">>)),
+
+        %% 1.100 is a float number
+        ?_assertMatch(
+            {ok,{select,[{fields,[{const,1.1}]},
+                {from,[<<"abc">>]},
+                {where,{}}]}},
+            rulesql:parsetree(<<"SELECT 1.100 FROM abc">>)),
+
+        %% a.1.100 is invalid because it is ambiguous:
+        %% a.'1'.'100' or a.'1.100' ?
+        ?_assertMatch(
+            {parse_error, _},
+            rulesql:parsetree(<<"SELECT a.1.100 FROM abc">>)),
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,[{path,
+                        [{key,<<"a">>},
+                         {key,<<"b">>},
+                         {key,<<"c">>},
+                         {index,{const,1}},
+                         {key,<<"1">>},
+                         {key,<<"100">>}]}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT a.b.c[1].'1'.100 FROM abc">>))
     ].
 
 maps_put_test_() ->
