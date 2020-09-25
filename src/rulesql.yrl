@@ -302,6 +302,10 @@ unwrap_bin({X, _}) when is_atom(X) -> atom_to_binary(X, unicode);
 unwrap_bin({_, _, X}) when is_list(X) -> list_to_binary([unquote(X)]);
 unwrap_bin({_, _, X}) when is_atom(X) -> atom_to_binary(X, unicode).
 
+unwrap_var({'NAME', _, "true"}) ->
+    const(true);
+unwrap_var({'NAME', _, "false"}) ->
+    const(false);
 unwrap_var(Token) ->
     case unwrap_bin(Token) of
         <<"*">> -> '*';
