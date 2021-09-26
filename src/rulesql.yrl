@@ -290,6 +290,8 @@ Erlang code.
 
 -include("sql_lex.hrl").
 
+-type kind() :: select | foreach.
+
 %%-----------------------------------------------------------------------------
 %%                          parser helper functions
 %%-----------------------------------------------------------------------------
@@ -369,7 +371,7 @@ trans_list_ref({cons, Head, Tail}) ->
 %%                                  PARSER
 %%-----------------------------------------------------------------------------
 -spec parsetree(binary()|list()) ->
-    {parse_error, term()} | {lex_error, term()} | {ok, {select | foreach, [tuple()]}}.
+    {parse_error, term()} | {lex_error, term()} | {ok, {kind(), [tuple()]}}.
 parsetree(Sql) ->
     ?D("Start~n Sql: ~p~n", [Sql]),
     case parsetree_with_tokens(Sql) of
@@ -380,7 +382,7 @@ parsetree(Sql) ->
     end.
 
 -spec parsetree_with_tokens(binary()|list()) ->
-    {parse_error, term()} | {lex_error, term()} | {ok, {[tuple()], list()}}.
+    {parse_error, term()} | {lex_error, term()} | {ok, {{kind(), [tuple()]}, list()}}.
 parsetree_with_tokens([]) -> {parse_error, invalid_string};
 parsetree_with_tokens(<<>>) -> {parse_error, invalid_string};
 parsetree_with_tokens(Sql0) ->
