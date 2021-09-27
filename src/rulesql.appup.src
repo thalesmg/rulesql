@@ -3,5 +3,5 @@
  ],
 
  [{<<".*">>, [{load_module, sql_lex},{load_module, rulesql}]}
- ],
+ ]
 }.
