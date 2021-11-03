@@ -161,7 +161,8 @@ event_exp -> from_clause where_clause :
 
 from_clause -> FROM from_column_commalist : {from, '$2'}.
 
-from_column -> NAME           : [unwrap_bin('$1')].
+from_column -> NAME   : [unwrap_bin('$1')].
+from_column -> STRING : [unwrap_bin('$1')].
 
 from_column_commalist ->                           from_column :        '$1'.
 from_column_commalist -> from_column_commalist ',' from_column : '$1'++ '$3'.
