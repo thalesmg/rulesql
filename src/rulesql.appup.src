@@ -1,4 +1,4 @@
-{"0.1.4",
+{"0.1.5",
  [{<<".*">>, [{load_module, sql_lex},{load_module, rulesql}]}
  ],
 
