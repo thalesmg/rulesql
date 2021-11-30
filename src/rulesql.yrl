@@ -341,8 +341,14 @@ const(V) -> {const, V}.
 make_list(L) when is_list(L) -> L;
 make_list(L) -> [L].
 
-unquote(Str) ->
-    string:trim(string:trim(Str, both, "'"), both, "\"").
+unquote("'" ++ _ = Str) ->
+    string:trim(Str, both, "'");
+
+unquote("\"" ++ _ = Str) ->
+    string:trim(Str, both, "\"");
+
+unquote(Str) when is_list(Str) ->
+    Str.
 
 merge_path({var, V1}, {var, V2}) ->
     {path, [{key, V1}, {key, V2}]};

@@ -670,6 +670,31 @@ from_test_quotes3_test_() ->
         ]}}, rulesql:parsetree(<<"SELECT * FROM 'foo \"bar\" bazz'">>))
     ].
 
+from_test_quotes4_test_() ->
+    %% single and double quotes are both allow allowed in the FROM clause
+    %% test multiple events in the FROM clause using different quotes
+    [ ?_assertMatch({ok, {select,
+        [ {fields,['*']}
+        , {from, [<<"'foo'">>]}
+        , {where,{}}
+        ]}}, rulesql:parsetree(<<"SELECT * FROM \"'foo'\"">>))
+    , ?_assertMatch({ok, {select,
+        [ {fields,['*']}
+        , {from, [<<"bar'foo'">>]}
+        , {where,{}}
+        ]}}, rulesql:parsetree(<<"SELECT * FROM \"bar'foo'\"">>))
+    , ?_assertMatch({ok, {select,
+        [ {fields,['*']}
+        , {from, [<<"\"foo\"">>]}
+        , {where,{}}
+        ]}}, rulesql:parsetree(<<"SELECT * FROM '\"foo\"'">>))
+    , ?_assertMatch({ok, {select,
+        [ {fields,['*']}
+        , {from, [<<"bar\"foo\"">>]}
+        , {where,{}}
+        ]}}, rulesql:parsetree(<<"SELECT * FROM 'bar\"foo\"'">>))
+    ].
+
 where_test_() ->
     [
         %% basic where
