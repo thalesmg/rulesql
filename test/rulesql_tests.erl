@@ -10,6 +10,19 @@
 keyword_1_test() ->
     [?assert(rulesql:is_reserved(Key)) || Key <- ?RESERVED_KEYS].
 
+utf8_test_() ->
+    [
+      ?_assertMatch(
+        {parse_error, {invalid_utf8, _}},
+        rulesql:parsetree(<<"SELECT x FROM \"测试专用topic\"">>)),
+      ?_assertMatch(
+        {ok,{select,
+          [{fields,['*']},
+            {from,[<<"测试专用topic"/utf8>>]},
+            {where,{}}]}},
+        rulesql:parsetree(<<"SELECT * FROM \"测试专用topic\""/utf8>>))
+    ].
+
 select_test_() ->
     [
         %% basic select
