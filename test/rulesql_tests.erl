@@ -23,6 +23,16 @@ utf8_test_() ->
         rulesql:parsetree(<<"SELECT * FROM \"测试专用topic\""/utf8>>))
     ].
 
+empty_test_() ->
+    [
+      ?_assertMatch(
+        {parse_error, invalid_string},
+        rulesql:parsetree(<<"">>)),
+     ?_assertMatch(
+        {parse_error, invalid_string},
+        rulesql:parsetree(<<"\r\n  \r\n">>))
+    ].
+
 select_test_() ->
     [
         %% basic select
