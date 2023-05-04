@@ -392,24 +392,36 @@ parsetree(Sql) ->
     {parse_error, term()} | {lex_error, term()} | {ok, {{kind(), [tuple()]}, list()}}.
 parsetree_with_tokens([]) -> {parse_error, invalid_string};
 parsetree_with_tokens(<<>>) -> {parse_error, invalid_string};
-parsetree_with_tokens(Sql0) ->
-    Sql = re:replace(Sql0, "(^[ \r\n]+)|([ \r\n]+$)", "",
-        [global, {return, list}]),
-    ?D("Start~n Sql: ~p~n", [Sql]),
-    SqlClean = unicode:characters_to_list(
-                    string:replace(Sql, "\n/", "", all)),
-    case sql_lex:string(string:trim(SqlClean)) of
-        {ok, Toks, _} ->
-            case parse(Toks) of
-                {ok, PTree} ->
-                    ?D("~n ParseTree: ~p~n Tokens: ~p~n", [PTree, Toks]),
-                    {ok, {PTree, Toks}};
-                {error, {N, ?MODULE, ErrorTerms}} ->
-                    {parse_error, {lists:flatten(
-                        [integer_to_list(N), ": ", ErrorTerms]), Toks}};
-                {error, Error} -> {parse_error, {Error, Toks}}
-            end;
-        {error, Error, _} -> {lex_error, Error}
+parsetree_with_tokens(RawSql) ->
+    case sql_clean(RawSql) of
+        {ok, Sql} ->
+           case sql_lex:string(Sql) of
+               {ok, Toks, _} ->
+                  case parse(Toks) of
+                      {ok, PTree} ->
+                         ?D("~n ParseTree: ~p~n Tokens: ~p~n", [PTree, Toks]),
+                         {ok, {PTree, Toks}};
+                      {error, {N, ?MODULE, ErrorTerms}} ->
+                         {parse_error, {lists:flatten(
+                            [integer_to_list(N), ": ", ErrorTerms]), Toks}};
+                      {error, Error} -> {parse_error, {Error, Toks}}
+                  end;
+               {error, Error, _} -> {lex_error, Error}
+          end;
+       {error, Error} -> {parse_error, Error}
+    end.
+
+sql_clean(Sql0) ->
+    case unicode:characters_to_binary(Sql0, utf8) of
+        Sql1 when is_binary(Sql1) ->
+          Sql2 = re:replace(Sql1, "(^[ \r\n]+)|([ \r\n]+$)", "", [global, {return, list}]),
+          ?D("Start~n Sql: ~p~n", [Sql2]),
+          Sql3 = unicode:characters_to_list(string:replace(Sql2, "\n/", "", all)),
+          case string:trim(Sql3) of
+              "" -> {error, invalid_string};
+              Sql4 -> {ok, Sql4}
+          end;
+        Error -> {error, {invalid_utf8, Error}}
     end.
 
 -spec is_reserved(binary() | atom() | list()) -> true | false.
