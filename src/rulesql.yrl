@@ -48,7 +48,8 @@ Nonterminals
   list_elem
   list_elems
   range_ref
-  range_literal.
+  range_literal
+  div_or_mod.
 
 Terminals
   STRING
@@ -83,7 +84,8 @@ Terminals
   '-'
   '.'
   '/'
-  'div'.
+  'div'
+  'mod'.
 
 Rootsymbol sql.
 
@@ -96,7 +98,7 @@ Left        200 AND.
 Left        300 NOT.
 Nonassoc    400 COMPARISON.
 Left        500 '+' '-'.
-Left        600 '*' '/' 'div'.
+Left        600 '*' '/' 'div' 'mod'.
 Left        700 unary_add_or_subtract.
 
 sql -> query_exp : '$1'.
@@ -206,6 +208,7 @@ scalar_exp -> scalar_exp '-'    scalar_exp : {'-','$1','$3'}.
 scalar_exp -> scalar_exp '*'    scalar_exp : {'*','$1','$3'}.
 scalar_exp -> scalar_exp '/'    scalar_exp : {'/','$1','$3'}.
 scalar_exp -> scalar_exp 'div'  scalar_exp : {'div','$1','$3'}.
+scalar_exp -> scalar_exp 'mod'  scalar_exp : {'mod','$1','$3'}.
 scalar_exp -> unary_add_or_subtract scalar_exp : {'$1','$2'}.
 scalar_exp -> literal                       : '$1'.
 scalar_exp -> computed_var                  : '$1'.
@@ -254,8 +257,12 @@ list_ref -> '[' list_elems ']'           : {list, trans_list_ref('$2')}.
 range_ref ->  name_or_path_ref  RANGE   : {'get_range', unwrap_range('$2'), '$1'}.
 range_literal -> RANGE                  : {'range', unwrap_range('$1')}.
 
+div_or_mod -> div : '$1'.
+div_or_mod -> mod : '$1'.
+
 function_ref -> name_or_path_ref   '('                ')' : {'fun', '$1', []}.
 function_ref -> name_or_path_ref   '(' fun_args       ')' : {'fun', '$1', make_list('$3')}.
+function_ref -> div_or_mod   '(' fun_args       ')' : {'fun', unwrap_var('$1'), make_list('$3')}.
 
 fun_args -> fun_arg              : ['$1'].
 fun_args -> fun_arg ',' fun_args : ['$1' | '$3'].
@@ -269,6 +276,7 @@ fun_arg -> fun_arg '+'   fun_arg         : {'+',  '$1','$3'}.
 fun_arg -> fun_arg '-'   fun_arg         : {'-',  '$1','$3'}.
 fun_arg -> fun_arg '/'   fun_arg         : {'/',  '$1','$3'}.
 fun_arg -> fun_arg 'div' fun_arg         : {'div','$1','$3'}.
+fun_arg -> fun_arg 'mod' fun_arg         : {'mod','$1','$3'}.
 fun_arg -> fun_arg COMPARISON fun_arg    : {unwrap('$2'), '$1', '$3'}.
 fun_arg -> function_ref                  : '$1'.
 fun_arg -> unary_add_or_subtract fun_arg : {'$1', '$2'}.
