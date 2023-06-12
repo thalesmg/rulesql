@@ -515,6 +515,37 @@ non_as_test_() ->
                      {where,{}}]}},
             rulesql:parsetree(<<"SELECT x / y as e FROM \"abc\"">>)),
 
+
+        ?_assertMatch(
+            {ok,{select,[{fields,[{'mod',{var,<<"x">>},{var,<<"y">>}}]},
+                         {from,[<<"abc">>]},
+                         {where,{}}]}},
+            rulesql:parsetree(<<"SELECT x mod y FROM \"abc\"">>)),
+        ?_assertMatch(
+            {ok,{select,[{fields,[{'div',{var,<<"x">>},{var,<<"y">>}}]},
+                         {from,[<<"abc">>]},
+                         {where,{}}]}},
+            rulesql:parsetree(<<"SELECT x div y FROM \"abc\"">>)),
+        %% One should be able to call div and mod as functions for backward compatibility
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{'fun',
+                            {var,<<"div">>},
+                            [{const,1},{var,<<"a">>}]}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT div(1,a) FROM \"abc\"">>)),
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                        [{'fun',
+                            {var,<<"mod">>},
+                            [{const,1},{var,<<"a">>}]}]},
+                    {from,[<<"abc">>]},
+                    {where,{}}]}},
+            rulesql:parsetree(<<"SELECT mod(1,a) FROM \"abc\"">>)),
+
         ?_assertMatch(
             {ok,{select,
                     [{fields,

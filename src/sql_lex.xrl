@@ -19,7 +19,7 @@ Rules.
 
 % punctuation
 (=|=~|~=|!=|<>|<|>|<=|>=)                           : {token, {'COMPARISON', TokenLine, list_to_atom(TokenChars)}}.
-([\-\+\*\/\(\)\[\]\,\.]|(div))                      : {token, {list_to_atom(TokenChars), TokenLine}}.
+([\-\+\*\/\(\)\[\]\,\.]|(div)|(mod))                : {token, {list_to_atom(TokenChars), TokenLine}}.
 
 % range
 \[({SD}\.\.{SD})\]                                  :
