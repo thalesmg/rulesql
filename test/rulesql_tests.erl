@@ -106,6 +106,25 @@ select_test_() ->
             rulesql:parsetree(<<"SELECT (z + x) * y as z FROM abc">>))
     ].
 
+array_with_expressions_test_() ->
+    [
+        ?_assertMatch(
+            {ok,{select,
+                    [{fields,
+                      [{list,
+                        [{'+',{const,1},{const,1}},
+                         {'fun',{var,<<"abs">>},[{'-',{const,1}}]},
+                         {'fun',
+                          {var,<<"abs">>},
+                          [{'fun',
+                            {var,<<"abs">>},
+                            [{'-',{const,1},{const,2}}]}]},
+                         {list,[{'-',{const,1},{const,2}}]}]}]},
+                     {from,[<<"abc">>]},
+                     {where,{}}]}},
+            rulesql:parsetree(<<"SELECT [1+1, abs(-1), abs(abs(1-2)), [1-2]] FROM \"abc\"">>))
+    ].
+
 vars_and_consts_test_() ->
     [
         %% identifiers without single quotes are vars
